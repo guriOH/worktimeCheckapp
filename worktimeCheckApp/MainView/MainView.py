@@ -92,12 +92,10 @@ class createMainUi(QWidget):
         sublayout1.addWidget(cal)
 
         label2 = QLabel('remain Time!!')
-        label3 = QLabel('Time')
-        line_edit2 = QLineEdit()
+        self.remainTimeLabel = QLabel('Time')
         sublayout2 = QVBoxLayout()
         sublayout2.addWidget(label2)
-        sublayout2.addWidget(line_edit2)
-        sublayout2.addWidget(label3)
+        sublayout2.addWidget(self.remainTimeLabel)
         button1 = QPushButton("button1")
         button2 = QPushButton("button2")
         button3 = QPushButton("button3")
@@ -111,22 +109,27 @@ class createMainUi(QWidget):
     def showDayInfo(self):
         dlg = timeSelectDialog()
         dlg.exec_()
-        self.timer_start(dlg.startTime.toString('hh:mm:ss'))
+        self.timer_start(dlg.startTime)
 
 
     def timer_start(self,startTime):
-        print(startTime)
         self.timer = QTimer()
-        self.timer.timeout.connect(self.timerEvent(startTime))
+        self.timer.timeout.connect(lambda *_str: self.timerEvent(startTime))
         self.timer.start(1000)
 
-        # self.update_gui()
 
     def timerEvent(self,startTime):
-        now = QTime.currentTime().toString('hh:mm:ss')
-        # hour = startTime - now
-        # print(hour)
-        print(now)
+        stTime = startTime.toString('hh:mm:ss').split(':')
+        now = QTime.currentTime().toString('hh:mm:ss').split(':')
+        self.hour = str(int(now[0])-int(stTime[0]))
+        self.minute = str(int(now[1])-int(stTime[1]))
+        self.second = str(int(now[2])-int(stTime[2]))
+
+        self.update_gui()
+
+    def update_gui(self):
+        # print(self.hour + ":" + self.minute + ":" + self.second)
+        self.remainTimeLabel.setText(self.hour + ":" + self.minute + ":" + self.second)
 
 
 if __name__ == "__main__":
