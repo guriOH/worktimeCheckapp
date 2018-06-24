@@ -2,8 +2,8 @@ import datetime
 import sys
 
 from PyQt5 import *
-from PyQt5.QtCore import QDate, QEvent, Qt, QTimer, QTime
-from PyQt5.QtGui import QIcon, QCursor
+from PyQt5.QtCore import QDate, QEvent, Qt, QTimer, QTime, pyqtSlot
+from PyQt5.QtGui import QIcon, QCursor, QTextCharFormat
 from PyQt5.QtWidgets import *
 
 startWorkTime = None
@@ -88,14 +88,24 @@ class createMainUi(QWidget):
         super().__init__()
         menubar = QMenuBar()
         menubar.setNativeMenuBar(False)
-        cal = QCalendarWidget()
-        cal.setVerticalHeaderFormat(0)  # vertical header 숨기기
-        cal.installEventFilter(self)
+        self.cal = QCalendarWidget()
+        self.cal.setVerticalHeaderFormat(0)  # vertical header 숨기기
+        self.cal.installEventFilter(self)
 
-        cal.clicked[QDate].connect(self.showDayInfo)
+        self.cal.clicked[QDate].connect(self.showDayInfo)
+
+        fm = QTextCharFormat()
+        fm.setForeground(Qt.red)
+        fm.setBackground(Qt.yellow)
+
+        self.today = str(datetime.datetime.now().date())
+        print(self.today)
+        self.cal.setDateTextFormat(QDate.fromString(self.today, "yyyy-MM-dd"), fm)
+
+
 
         sublayout1 = QVBoxLayout()
-        sublayout1.addWidget(cal)
+        sublayout1.addWidget(self.cal)
 
         label2 = QLabel('Worked Time!!')
         self.workTimeLabel = QLabel('Time')
@@ -121,10 +131,18 @@ class createMainUi(QWidget):
         grid_layout.addWidget(button2, 3, 1, 1, 1)
         grid_layout.addWidget(button3, 3, 2, 1, 1)
 
-    def showDayInfo(self):
-        dlg = timeSelectDialog()
-        dlg.exec_()
-        self.timer_start(dlg.startWorkTime)
+    @pyqtSlot(QDate)
+    def showDayInfo(self,date):
+        print(str(date.toPyDate()))
+        if str(date.toPyDate()).__ne__(self.today):
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Not toDay")
+            msg.exec_()
+        else:
+            dlg = timeSelectDialog()
+            dlg.exec_()
+            self.timer_start(dlg.startWorkTime)
 
     def timer_start(self, startTime):
         self.timer = QTimer()
