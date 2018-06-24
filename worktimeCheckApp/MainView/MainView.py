@@ -6,6 +6,8 @@ from PyQt5.QtCore import QDate, QEvent, Qt, QTimer, QTime
 from PyQt5.QtGui import QIcon, QCursor
 from PyQt5.QtWidgets import *
 
+startWorkTime = None
+
 
 class timeSelectDialog(QDialog):
     def __init__(self):
@@ -26,6 +28,10 @@ class timeSelectDialog(QDialog):
         self.EndTimeed.setDisplayFormat("hh:mm:ss")  # 24 시간으로 표시 self.timeed.setTime(QTime(15,30))
         # 현재 시간으로 Default 설정 추가 필요
 
+        if startWorkTime is None:
+            self.StartTimeed.setTime(QTime.currentTime())
+        else:
+            self.StartTimeed.setTime(startWorkTime)
         label1 = QLabel("Start Work: ")
         label2 = QLabel("End Work: ")
 
@@ -44,16 +50,17 @@ class timeSelectDialog(QDialog):
         self.setLayout(layout)
 
     def pushButtonClicked(self):
-        self.startTime= self.StartTimeed.time()
-        self.endTime = self.EndTimeed.time()
+        self.startWorkTime = self.StartTimeed.time()
+        self.EndWorkTime = self.EndTimeed.time()
+        global startWorkTime
+        startWorkTime = self.startWorkTime
+        print(startWorkTime)
         self.hide()
 
     def closeEvent(self, event):
         print
         "User has clicked the red x on the main window"
         event.accept()
-
-
 
 
 class MainView(QMainWindow):
@@ -75,7 +82,6 @@ class MainView(QMainWindow):
         self.statusBar().showMessage("Text in status bar")
 
 
-
 class createMainUi(QWidget):
 
     def __init__(self):
@@ -91,45 +97,56 @@ class createMainUi(QWidget):
         sublayout1 = QVBoxLayout()
         sublayout1.addWidget(cal)
 
-        label2 = QLabel('remain Time!!')
-        self.remainTimeLabel = QLabel('Time')
-        sublayout2 = QVBoxLayout()
+        label2 = QLabel('Worked Time!!')
+        self.workTimeLabel = QLabel('Time')
+        sublayout2 = QHBoxLayout()
         sublayout2.addWidget(label2)
-        sublayout2.addWidget(self.remainTimeLabel)
-        button1 = QPushButton("button1")
-        button2 = QPushButton("button2")
-        button3 = QPushButton("button3")
+        sublayout2.addWidget(self.workTimeLabel)
+
+        label3 = QLabel('Remain Time!!')
+        self.remainTimeLabel = QLabel('Time')
+        sublayout3 = QHBoxLayout()
+        sublayout3.addWidget(label3)
+        sublayout3.addWidget(self.remainTimeLabel)
+
+        button1 = QPushButton("Get off work")
+        button1.clicked.connect(self.getOffwork)
+        button2 = QPushButton("Remained work time (at week)")
+        button3 = QPushButton("------")
         grid_layout = QGridLayout(self)
         grid_layout.addLayout(sublayout1, 0, 0, 1, 3)
         grid_layout.addLayout(sublayout2, 1, 0, 1, 3)
-        grid_layout.addWidget(button1, 2, 0, 1, 1)
-        grid_layout.addWidget(button2, 2, 1, 1, 1)
-        grid_layout.addWidget(button3, 2, 2, 1, 1)
+        grid_layout.addLayout(sublayout3, 2, 0, 1, 3)
+        grid_layout.addWidget(button1, 3, 0, 1, 1)
+        grid_layout.addWidget(button2, 3, 1, 1, 1)
+        grid_layout.addWidget(button3, 3, 2, 1, 1)
 
     def showDayInfo(self):
         dlg = timeSelectDialog()
         dlg.exec_()
-        self.timer_start(dlg.startTime)
+        self.timer_start(dlg.startWorkTime)
 
-
-    def timer_start(self,startTime):
+    def timer_start(self, startTime):
         self.timer = QTimer()
         self.timer.timeout.connect(lambda *_str: self.timerEvent(startTime))
         self.timer.start(1000)
 
-
-    def timerEvent(self,startTime):
+    def timerEvent(self, startTime):
         stTime = startTime.toString('hh:mm:ss').split(':')
         now = QTime.currentTime().toString('hh:mm:ss').split(':')
-        self.hour = str(int(now[0])-int(stTime[0]))
-        self.minute = str(int(now[1])-int(stTime[1]))
-        self.second = str(int(now[2])-int(stTime[2]))
-
+        self.hour = str(int(now[0]) - int(stTime[0]))
+        self.minute = str(int(now[1]) - int(stTime[1]))
+        self.second = str(int(now[2]) - int(stTime[2]))
         self.update_gui()
 
     def update_gui(self):
         # print(self.hour + ":" + self.minute + ":" + self.second)
-        self.remainTimeLabel.setText(self.hour + ":" + self.minute + ":" + self.second)
+        self.workTime = self.hour + ":" + self.minute + ":" + self.second
+        self.workTimeLabel.setText(self.workTime)
+
+    def getOffwork(self):
+        print("Go Home!! Current Time - " + QTime.currentTime().toString('hh:mm:ss'))
+        print("Your worked time for the day is " + self.workTime)
 
 
 if __name__ == "__main__":
