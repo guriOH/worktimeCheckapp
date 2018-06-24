@@ -8,7 +8,7 @@ from PyQt5.QtGui import QIcon, QCursor, QTextCharFormat
 from PyQt5.QtWidgets import *
 
 startWorkTime = None
-
+remainTime_one_week = "40:00:00"
 
 class timeSelectDialog(QDialog):
     def __init__(self):
