@@ -1,5 +1,6 @@
 import datetime
 import sys
+from time import strftime
 
 from PyQt5 import *
 from PyQt5.QtCore import QDate, QEvent, Qt, QTimer, QTime, pyqtSlot
@@ -88,6 +89,8 @@ class createMainUi(QWidget):
         super().__init__()
         menubar = QMenuBar()
         menubar.setNativeMenuBar(False)
+
+        self.workTime = ""
         self.cal = QCalendarWidget()
         self.cal.setVerticalHeaderFormat(0)  # vertical header 숨기기
         self.cal.installEventFilter(self)
@@ -146,25 +149,24 @@ class createMainUi(QWidget):
 
     def timer_start(self, startTime):
         self.timer = QTimer()
+        self.time = QTime(0, 0, 0)
         self.timer.timeout.connect(lambda *_str: self.timerEvent(startTime))
         self.timer.start(1000)
 
     def timerEvent(self, startTime):
-        stTime = startTime.toString('hh:mm:ss').split(':')
-        now = QTime.currentTime().toString('hh:mm:ss').split(':')
-        self.hour = str(int(now[0]) - int(stTime[0]))
-        self.minute = str(int(now[1]) - int(stTime[1]))
-        self.second = str(int(now[2]) - int(stTime[2]))
+        global time
+        self.time = self.time.addSecs(1)
         self.update_gui()
 
     def update_gui(self):
         # print(self.hour + ":" + self.minute + ":" + self.second)
-        self.workTime = self.hour + ":" + self.minute + ":" + self.second
-        self.workTimeLabel.setText(self.workTime)
+        self.workTime =self.time.toString("hh:mm:ss")
+        self.workTimeLabel.setText(self.time.toString("hh:mm:ss"))
 
     def getOffwork(self):
         print("Go Home!! Current Time - " + QTime.currentTime().toString('hh:mm:ss'))
         print("Your worked time for the day is " + self.workTime)
+        self.timer.stop()
 
 
 if __name__ == "__main__":
