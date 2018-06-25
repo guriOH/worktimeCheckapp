@@ -1,22 +1,22 @@
 import datetime
 import sys
-from time import strftime
+import psycopg2
 
-from PyQt5 import *
 from PyQt5.QtCore import QDate, QEvent, Qt, QTimer, QTime, pyqtSlot
 from PyQt5.QtGui import QIcon, QCursor, QTextCharFormat
 from PyQt5.QtWidgets import *
 
+
 startWorkTime = None
 remainTime_one_week = "40:00:00"
+con = None
+scheduletableName = "schedule"
 
 class timeSelectDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setupUI()
 
-        self.id = None
-        self.password = None
 
     def setupUI(self):
         self.setGeometry(400, 400, 300, 100)
@@ -64,9 +64,12 @@ class timeSelectDialog(QDialog):
         event.accept()
 
 
+
 class MainView(QMainWindow):
     def __init__(self):
         super().__init__()
+        global db
+        db = dbUtils()
         self.mainUI = createMainUi()
         self.setCentralWidget(self.mainUI)
         self.setWindowTitle("Henry's WorkTime")
@@ -125,7 +128,8 @@ class createMainUi(QWidget):
         button1 = QPushButton("Get off work")
         button1.clicked.connect(self.getOffwork)
         button2 = QPushButton("Remained work time (at week)")
-        button3 = QPushButton("------")
+        button3 = QPushButton("resetByDate")
+        button3.clicked.connect(self.resultByDate)
         grid_layout = QGridLayout(self)
         grid_layout.addLayout(sublayout1, 0, 0, 1, 3)
         grid_layout.addLayout(sublayout2, 1, 0, 1, 3)
@@ -145,6 +149,7 @@ class createMainUi(QWidget):
         else:
             dlg = timeSelectDialog()
             dlg.exec_()
+            db.insertData(self.today, dlg.startWorkTime)
             self.timer_start(dlg.startWorkTime)
 
     def timer_start(self, startTime):
@@ -164,9 +169,63 @@ class createMainUi(QWidget):
         self.workTimeLabel.setText(self.time.toString("hh:mm:ss"))
 
     def getOffwork(self):
-        print("Go Home!! Current Time - " + QTime.currentTime().toString('hh:mm:ss'))
+        endtime = QTime.currentTime().toString('hh:mm:ss')
+        print("Go Home!! Current Time - " + endtime)
         print("Your worked time for the day is " + self.workTime)
+        db.updateData(self.today,endtime)
         self.timer.stop()
+
+    def resultByDate(self):
+        db.resetByDate(self.today)
+        print("reset Data is date = " + self.today)
+
+
+class dbUtils():
+
+    def __init__(self):
+        self.getConn()
+        self.createScheduleTable()
+
+    def createScheduleTable(self):
+        cur = con.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS "+scheduletableName+"(Id text PRIMARY KEY, date DATE, start_w TIME NOT NULL, end_w TIME NOT NULL)")
+        con.commit()
+        print("create schedule table")
+
+    def getConn(self):
+        global con
+        con = psycopg2.connect(host="localhost", dbname="henryDB", user="postgres")
+
+    def insertData(self, today, startWorkTime):
+        cur = con.cursor()
+        sql ="INSERT INTO " + scheduletableName + "(id,date,start_w,end_w) VALUES('henry','"+today+"','"+startWorkTime.toString('hh:mm:ss')+"', '00:00:00')"
+        try:
+            cur.execute(sql)
+        except psycopg2.Error as e:
+            print(e)
+        con.commit()
+
+    def updateData(self, today, endtime):
+        cur = con.cursor()
+        sql = "UPDATE " + scheduletableName + " SET end_w = '"+endtime+ "' WHERE date = '"+today+"'"
+        try:
+           cur.execute(sql)
+        except psycopg2.Error as e:
+            print(e)
+        con.commit()
+
+    def resetByDate(self, today):
+        cur = con.cursor()
+        sql = "DELETE FROM " + scheduletableName + " WHERE id = 'henry' AND date = '"+today+"'"
+        try:
+            cur.execute(sql)
+        except psycopg2.Error as e:
+            print(e)
+        con.commit()
+
+    def closeConn(self):
+        con.close()
 
 
 if __name__ == "__main__":
