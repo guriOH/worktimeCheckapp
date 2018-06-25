@@ -177,6 +177,8 @@ class createMainUi(QWidget):
 
     def resultByDate(self):
         db.resetByDate(self.today)
+        global startWorkTime
+        startWorkTime = None
         print("reset Data is date = " + self.today)
 
 
