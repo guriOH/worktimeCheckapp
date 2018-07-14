@@ -5,10 +5,12 @@ import psycopg2
 from PyQt5.QtCore import QDate, QEvent, Qt, QTimer, QTime, pyqtSlot
 from PyQt5.QtGui import QIcon, QCursor, QTextCharFormat
 from PyQt5.QtWidgets import *
-
+import datetime
+import time
 
 startWorkTime = None
-remainTime_one_week = "40:00:00"
+remainTime_one_week = 144000.0
+t = ['월', '화', '수', '목', '금', '토', '일']
 con = None
 scheduletableName = "schedule"
 
@@ -52,10 +54,13 @@ class timeSelectDialog(QDialog):
 
     def pushButtonClicked(self):
         self.startWorkTime = self.StartTimeed.time()
-        self.EndWorkTime = self.EndTimeed.time()
+        self.endWorkTime = self.EndTimeed.time()
         global startWorkTime
-        startWorkTime = self.startWorkTime
+        startWorkTime = self.StartTimeed.time()
+        global endWorkTime
+        endWorkTime = self.EndTimeed.time()
         print(startWorkTime)
+        print(endWorkTime)
         self.hide()
 
     def closeEvent(self, event):
@@ -92,8 +97,7 @@ class createMainUi(QWidget):
         super().__init__()
         menubar = QMenuBar()
         menubar.setNativeMenuBar(False)
-
-        self.workTime = ""
+        self.selectDay = None
         self.cal = QCalendarWidget()
         self.cal.setVerticalHeaderFormat(0)  # vertical header 숨기기
         self.cal.installEventFilter(self)
@@ -106,6 +110,8 @@ class createMainUi(QWidget):
 
         self.today = str(datetime.datetime.now().date())
         print(self.today)
+
+
         self.cal.setDateTextFormat(QDate.fromString(self.today, "yyyy-MM-dd"), fm)
 
 
@@ -125,9 +131,10 @@ class createMainUi(QWidget):
         sublayout3.addWidget(label3)
         sublayout3.addWidget(self.remainTimeLabel)
 
-        button1 = QPushButton("Get off work")
-        button1.clicked.connect(self.getOffwork)
+        button1 = QPushButton("Show work time")
+        button1.clicked.connect(self.getWorkTime)
         button2 = QPushButton("Remained work time (at week)")
+        button2.clicked.connect(self.calcremainTime)
         button3 = QPushButton("resetByDate")
         button3.clicked.connect(self.resultByDate)
         grid_layout = QGridLayout(self)
@@ -140,6 +147,7 @@ class createMainUi(QWidget):
 
     @pyqtSlot(QDate)
     def showDayInfo(self,date):
+        self.selectDay = str(date.toPyDate())
         print(str(date.toPyDate()))
         if str(date.toPyDate()).__ne__(self.today):
             msg = QMessageBox()
@@ -149,37 +157,41 @@ class createMainUi(QWidget):
         else:
             dlg = timeSelectDialog()
             dlg.exec_()
-            db.insertData(self.today, dlg.startWorkTime)
-            self.timer_start(dlg.startWorkTime)
+            db.insertData(self.today, dlg.startWorkTime,dlg.endWorkTime)
 
-    def timer_start(self, startTime):
-        self.timer = QTimer()
-        self.time = QTime(0, 0, 0)
-        self.timer.timeout.connect(lambda *_str: self.timerEvent(startTime))
-        self.timer.start(1000)
+    def getWorkTime(self):
+        workTime = db.selectDay(self.selectDay)
+        workTime = self.convertTimeFormat(workTime, "%d:%02d:%02d")
+        self.workTimeLabel.setText(workTime)
 
-    def timerEvent(self, startTime):
-        global time
-        self.time = self.time.addSecs(1)
-        self.update_gui()
-
-    def update_gui(self):
-        # print(self.hour + ":" + self.minute + ":" + self.second)
-        self.workTime =self.time.toString("hh:mm:ss")
-        self.workTimeLabel.setText(self.time.toString("hh:mm:ss"))
-
-    def getOffwork(self):
-        endtime = QTime.currentTime().toString('hh:mm:ss')
-        print("Go Home!! Current Time - " + endtime)
-        print("Your worked time for the day is " + self.workTime)
-        db.updateData(self.today,endtime)
-        self.timer.stop()
 
     def resultByDate(self):
         db.resetByDate(self.today)
         global startWorkTime
         startWorkTime = None
         print("reset Data is date = " + self.today)
+
+    def calcremainTime(self):
+        print(str(datetime.datetime.now().date()).split('-')[2])
+        r = datetime.datetime.today().weekday()
+        today = str(datetime.datetime.now().date()).split('-')
+        theDay = int(today[2])-r
+        print(theDay)
+        startDay = str(today[0]+"-"+today[1]+"-"+str(int(today[2])-r))
+        reformat = QDate.fromString(startDay, "yyyy-MM-dd")
+        print(reformat.toString("yyyy-MM-dd"))
+
+        time = db.calcRemainTime(reformat.toString("yyyy-MM-dd"))
+        resultTime = self.convertTimeFormat(remainTime_one_week-time, "%d:%02d:%02d")
+        print(resultTime)
+
+        self.remainTimeLabel.setText(resultTime)
+
+    def convertTimeFormat(self, time, format):
+        m, s = divmod(time, 60)
+        h, m = divmod(m, 60)
+        resultTime = format % (h, m, s)
+        return resultTime
 
 
 class dbUtils():
@@ -191,17 +203,23 @@ class dbUtils():
     def createScheduleTable(self):
         cur = con.cursor()
         cur.execute(
-            "CREATE TABLE IF NOT EXISTS "+scheduletableName+"(Id text PRIMARY KEY, date DATE, start_w TIME NOT NULL, end_w TIME NOT NULL)")
+            "CREATE TABLE IF NOT EXISTS "+scheduletableName+"(Id text PRIMARY KEY, date DATE, start_w TIME NOT NULL, end_w TIME NOT NULL, work_time DOUBLE PRECISION)")
         con.commit()
         print("create schedule table")
 
     def getConn(self):
         global con
-        con = psycopg2.connect(host="localhost", dbname="henryDB", user="postgres")
+        con = psycopg2.connect(host="localhost", dbname="hoon", user="postgres")
 
-    def insertData(self, today, startWorkTime):
+    def insertData(self, today, startWorkTime, endWorkTime):
+        todayworktime = (datetime.datetime.now().strptime(endWorkTime.toString('hh:mm:ss'), '%H:%M:%S')-
+              datetime.datetime.now().strptime(startWorkTime.toString('hh:mm:ss'),'%H:%M:%S')).total_seconds()
+        print(todayworktime)
         cur = con.cursor()
-        sql ="INSERT INTO " + scheduletableName + "(id,date,start_w,end_w) VALUES('henry','"+today+"','"+startWorkTime.toString('hh:mm:ss')+"', '00:00:00')"
+        sql ="INSERT INTO " + scheduletableName + "(id,date,start_w,end_w,work_time) VALUES('henry','"\
+             +today+"','"+startWorkTime.toString('hh:mm:ss')+"', '"\
+             +endWorkTime.toString('hh:mm:ss')+"', '"\
+             +str(todayworktime)+"')"
         try:
             cur.execute(sql)
         except psycopg2.Error as e:
@@ -217,17 +235,50 @@ class dbUtils():
             print(e)
         con.commit()
 
-    def resetByDate(self, today):
+    def resetByDate(self, day):
         cur = con.cursor()
-        sql = "DELETE FROM " + scheduletableName + " WHERE id = 'henry' AND date = '"+today+"'"
+        sql = "DELETE FROM " + scheduletableName + " WHERE id = 'henry' AND date = '"+day+"'"
         try:
             cur.execute(sql)
         except psycopg2.Error as e:
             print(e)
         con.commit()
 
+    def selectDay(self, day):
+        cur = con.cursor()
+        sql = "SELECT work_time FROM " + scheduletableName + " WHERE date = '" + day + "'"
+
+        print(sql)
+        try:
+            cur.execute(sql)
+        except psycopg2.Error as e:
+            print(e)
+        con.commit()
+        rows = cur.fetchall()
+        print("\nRows: \n")
+        for row in rows:
+            return row[0]
+
+    def calcRemainTime(self,startDay):
+        cur = con.cursor()
+        sql = "select sum(work_time) FROM " + scheduletableName + " WHERE date >= '"+startDay+"'"
+        print(sql)
+        try:
+            cur.execute(sql)
+
+        except psycopg2.Error as e:
+            print(e)
+        con.commit()
+
+        rows = cur.fetchall()
+        print("\nRows: \n")
+        for row in rows:
+            return row[0]
+
+
     def closeConn(self):
         con.close()
+
 
 
 if __name__ == "__main__":
