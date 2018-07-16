@@ -149,15 +149,15 @@ class createMainUi(QWidget):
     def showDayInfo(self,date):
         self.selectDay = str(date.toPyDate())
         print(str(date.toPyDate()))
-        if str(date.toPyDate()).__ne__(self.today):
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setText("Not toDay")
-            msg.exec_()
-        else:
-            dlg = timeSelectDialog()
-            dlg.exec_()
-            db.insertData(self.today, dlg.startWorkTime,dlg.endWorkTime)
+        # if str(date.toPyDate()).__ne__(self.today):
+        #     msg = QMessageBox()
+        #     msg.setIcon(QMessageBox.Critical)
+        #     msg.setText("Not toDay")
+        #     msg.exec_()
+        # else:
+        dlg = timeSelectDialog()
+        dlg.exec_()
+        db.insertData(self.selectDay, dlg.startWorkTime, dlg.endWorkTime)
 
     def getWorkTime(self):
         workTime = db.selectDay(self.selectDay)
@@ -203,20 +203,20 @@ class dbUtils():
     def createScheduleTable(self):
         cur = con.cursor()
         cur.execute(
-            "CREATE TABLE IF NOT EXISTS "+scheduletableName+"(Id text PRIMARY KEY, date DATE, start_w TIME NOT NULL, end_w TIME NOT NULL, work_time DOUBLE PRECISION)")
+            "CREATE TABLE IF NOT EXISTS "+scheduletableName+"(date DATE PRIMARY KEY, start_w TIME NOT NULL, end_w TIME NOT NULL, work_time DOUBLE PRECISION)")
         con.commit()
         print("create schedule table")
 
     def getConn(self):
         global con
-        con = psycopg2.connect(host="localhost", dbname="hoon", user="postgres")
+        con = psycopg2.connect(host="localhost", dbname="henryDB", user="postgres")
 
     def insertData(self, today, startWorkTime, endWorkTime):
         todayworktime = (datetime.datetime.now().strptime(endWorkTime.toString('hh:mm:ss'), '%H:%M:%S')-
               datetime.datetime.now().strptime(startWorkTime.toString('hh:mm:ss'),'%H:%M:%S')).total_seconds()
         print(todayworktime)
         cur = con.cursor()
-        sql ="INSERT INTO " + scheduletableName + "(id,date,start_w,end_w,work_time) VALUES('henry','"\
+        sql ="INSERT INTO " + scheduletableName + "(date,start_w,end_w,work_time) VALUES('"\
              +today+"','"+startWorkTime.toString('hh:mm:ss')+"', '"\
              +endWorkTime.toString('hh:mm:ss')+"', '"\
              +str(todayworktime)+"')"
@@ -237,7 +237,7 @@ class dbUtils():
 
     def resetByDate(self, day):
         cur = con.cursor()
-        sql = "DELETE FROM " + scheduletableName + " WHERE id = 'henry' AND date = '"+day+"'"
+        sql = "DELETE FROM " + scheduletableName + " WHERE date = '"+day+"'"
         try:
             cur.execute(sql)
         except psycopg2.Error as e:
