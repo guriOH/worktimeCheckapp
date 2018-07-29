@@ -1,13 +1,11 @@
-import datetime
-import sys
-import psycopg2
+
 
 from PyQt5.QtCore import QDate, QEvent, Qt, QTimer, QTime, pyqtSlot
 from PyQt5.QtGui import QIcon, QCursor, QTextCharFormat, QMouseEvent
 from PyQt5.QtWidgets import *
 from worktimeCheckApp.Config.Config import *
+from worktimeCheckApp.DataBase.dbUtils import *
 import datetime
-import time
 
 
 
@@ -77,9 +75,9 @@ class timeSelectDialog(QDialog):
 class MainView(QMainWindow):
     def __init__(self):
         super().__init__()
-        global db, props
+        global db
         props = PropertiesReader()
-        db = dbUtils()
+        db = dbUtils(props)
 
         self.mainUI = createMainUi()
         self.setCentralWidget(self.mainUI)
@@ -110,9 +108,6 @@ class calendar(QCalendarWidget):
     def selectDate(self,date):
         self.selectDay = str(date.toPyDate())
         print(self.selectDay)
-
-
-
 
 
 class createMainUi(QWidget):
@@ -211,101 +206,3 @@ class createMainUi(QWidget):
         return resultTime
 
 
-class dbUtils():
-
-    def __init__(self):
-        self.host = props.read_properties().get('host')
-        self.dbname = props.read_properties().get('dbname')
-        self.user = props.read_properties().get('user')
-        self.getConn()
-        self.createScheduleTable()
-
-
-    def createScheduleTable(self):
-        cur = con.cursor()
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS "+scheduletableName+"(date DATE PRIMARY KEY, start_w TIME NOT NULL, end_w TIME NOT NULL, work_time DOUBLE PRECISION)")
-        con.commit()
-        print("create schedule table")
-
-    def getConn(self):
-        global con
-        con = psycopg2.connect(host=self.host, dbname=self.dbname, user=self.user)
-
-    def insertData(self, today, startWorkTime, endWorkTime):
-        todayworktime = (datetime.datetime.now().strptime(endWorkTime.toString('hh:mm:ss'), '%H:%M:%S')-
-              datetime.datetime.now().strptime(startWorkTime.toString('hh:mm:ss'),'%H:%M:%S')).total_seconds()
-        print(todayworktime)
-        cur = con.cursor()
-        sql ="INSERT INTO " + scheduletableName + "(date,start_w,end_w,work_time) VALUES('"\
-             +today+"','"+startWorkTime.toString('hh:mm:ss')+"', '"\
-             +endWorkTime.toString('hh:mm:ss')+"', '"\
-             +str(todayworktime)+"')"
-        try:
-            cur.execute(sql)
-        except psycopg2.Error as e:
-            print(e)
-        con.commit()
-
-    def updateData(self, today, endtime):
-        cur = con.cursor()
-        sql = "UPDATE " + scheduletableName + " SET end_w = '"+endtime+ "' WHERE date = '"+today+"'"
-        try:
-           cur.execute(sql)
-        except psycopg2.Error as e:
-            print(e)
-        con.commit()
-
-    def resetByDate(self, day):
-        cur = con.cursor()
-        sql = "DELETE FROM " + scheduletableName + " WHERE date = '"+day+"'"
-        try:
-            cur.execute(sql)
-        except psycopg2.Error as e:
-            print(e)
-        con.commit()
-
-    def selectDay(self, day):
-        cur = con.cursor()
-        sql = "SELECT work_time FROM " + scheduletableName + " WHERE date = '" + day + "'"
-
-        print(sql)
-        try:
-            cur.execute(sql)
-        except psycopg2.Error as e:
-            print(e)
-        con.commit()
-        rows = cur.fetchall()
-        print("\nRows: \n")
-        for row in rows:
-            return row[0]
-
-    def calcRemainTime(self,startDay):
-        cur = con.cursor()
-        sql = "select sum(work_time) FROM " + scheduletableName + " WHERE date >= '"+startDay+"'"
-        print(sql)
-        try:
-            cur.execute(sql)
-
-        except psycopg2.Error as e:
-            print(e)
-        con.commit()
-
-        rows = cur.fetchall()
-        print("\nRows: \n")
-        for row in rows:
-            return row[0]
-
-
-    def closeConn(self):
-        con.close()
-
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    myWindow = MainView()
-
-    myWindow.show()
-
-    app.exec_()
