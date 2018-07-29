@@ -21,7 +21,7 @@ class dbUtils():
         cur = con.cursor()
 
         cur.execute(
-            "CREATE TABLE IF NOT EXISTS "+self.tableName+" (date DATE PRIMARY KEY, start_w TIME NOT NULL, end_w TIME NOT NULL, work_time DOUBLE PRECISION)")
+            "CREATE TABLE IF NOT EXISTS "+self.tableName+" (date DATE, start_w TIME NOT NULL, end_w TIME NOT NULL, work_time DOUBLE PRECISION)")
         con.commit()
         print("create schedule table")
 

@@ -1,7 +1,7 @@
 
 
-from PyQt5.QtCore import QDate, QEvent, Qt, QTimer, QTime, pyqtSlot
-from PyQt5.QtGui import QIcon, QCursor, QTextCharFormat, QMouseEvent
+from PyQt5.QtCore import QDate
+from PyQt5.QtGui import QTextCharFormat
 from PyQt5.QtWidgets import *
 from worktimeCheckApp.Config.Config import *
 from worktimeCheckApp.DataBase.dbUtils import *
@@ -25,16 +25,10 @@ class MainView(QMainWindow):
         self.setCentralWidget(self.mainUI)
         self.setWindowTitle("Henry's WorkTime")
 
-        menu_bar = self.menuBar()
-        menu_bar.setNativeMenuBar(False)
-        file_menu = menu_bar.addMenu('File')
-        edit_menu = menu_bar.addMenu('Edit')
-        new_action = QAction('New', self)
-        file_menu.addAction(new_action)
-        new_action.setStatusTip("New File")
 
         self.resize(400, 300)
-        self.statusBar().showMessage("Text in status bar")
+        # self.statusBar().showMessage(self.mainUI.resultTime)
+
 
 class calendar(QCalendarWidget):
     def __init__(self):
@@ -56,6 +50,7 @@ class createMainUi(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.resultTime = self.convertTimeFormat(remainTime_one_week, "%d:%02d:%02d")
         menubar = QMenuBar()
         menubar.setNativeMenuBar(False)
         self.selectDay = None
@@ -133,10 +128,8 @@ class createMainUi(QWidget):
         print(reformat.toString("yyyy-MM-dd"))
 
         time = db.calcRemainTime(reformat.toString("yyyy-MM-dd"))
-        resultTime = self.convertTimeFormat(remainTime_one_week-time, "%d:%02d:%02d")
-
-
-        self.remainTimeLabel.setText(resultTime)
+        self.resultTime = self.convertTimeFormat(remainTime_one_week-time, "%d:%02d:%02d")
+        self.remainTimeLabel.setText(self.resultTime)
 
     def convertTimeFormat(self, time, format):
         resultTime = "0"
