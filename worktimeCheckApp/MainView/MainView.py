@@ -3,7 +3,7 @@ import sys
 import psycopg2
 
 from PyQt5.QtCore import QDate, QEvent, Qt, QTimer, QTime, pyqtSlot
-from PyQt5.QtGui import QIcon, QCursor, QTextCharFormat
+from PyQt5.QtGui import QIcon, QCursor, QTextCharFormat, QMouseEvent
 from PyQt5.QtWidgets import *
 import datetime
 import time
@@ -61,7 +61,8 @@ class timeSelectDialog(QDialog):
         endWorkTime = self.EndTimeed.time()
         print(startWorkTime)
         print(endWorkTime)
-        self.hide()
+        self.close()
+        self.reject()
 
     def closeEvent(self, event):
         print
@@ -90,6 +91,24 @@ class MainView(QMainWindow):
         self.resize(400, 300)
         self.statusBar().showMessage("Text in status bar")
 
+class calendar(QCalendarWidget):
+    def __init__(self):
+        super().__init__()
+        self.selectDay = str(datetime.datetime.now().date())
+        print(self.selectDay)
+        self.cal = QCalendarWidget()
+        self.cal.setVerticalHeaderFormat(0)  # vertical header 숨기기
+        self.cal.installEventFilter(self)
+        self.cal.clicked[QDate].connect(self.selectDate)
+
+
+    def selectDate(self,date):
+        self.selectDay = str(date.toPyDate())
+        print(self.selectDay)
+
+
+
+
 
 class createMainUi(QWidget):
 
@@ -98,26 +117,18 @@ class createMainUi(QWidget):
         menubar = QMenuBar()
         menubar.setNativeMenuBar(False)
         self.selectDay = None
-        self.cal = QCalendarWidget()
-        self.cal.setVerticalHeaderFormat(0)  # vertical header 숨기기
-        self.cal.installEventFilter(self)
+        self.cal = calendar()
 
-        self.cal.clicked[QDate].connect(self.showDayInfo)
 
         fm = QTextCharFormat()
         fm.setForeground(Qt.red)
         fm.setBackground(Qt.yellow)
 
         self.today = str(datetime.datetime.now().date())
-        print(self.today)
-
-
         self.cal.setDateTextFormat(QDate.fromString(self.today, "yyyy-MM-dd"), fm)
 
-
-
         sublayout1 = QVBoxLayout()
-        sublayout1.addWidget(self.cal)
+        sublayout1.addWidget(self.cal.cal)
 
         label2 = QLabel('Worked Time!!')
         self.workTimeLabel = QLabel('Time')
@@ -137,30 +148,27 @@ class createMainUi(QWidget):
         button2.clicked.connect(self.calcremainTime)
         button3 = QPushButton("resetByDate")
         button3.clicked.connect(self.resultByDate)
+        button4 = QPushButton("Insert Work Time")
+        button4.clicked.connect(self.showDayInfo)
         grid_layout = QGridLayout(self)
-        grid_layout.addLayout(sublayout1, 0, 0, 1, 3)
-        grid_layout.addLayout(sublayout2, 1, 0, 1, 3)
-        grid_layout.addLayout(sublayout3, 2, 0, 1, 3)
-        grid_layout.addWidget(button1, 3, 0, 1, 1)
-        grid_layout.addWidget(button2, 3, 1, 1, 1)
-        grid_layout.addWidget(button3, 3, 2, 1, 1)
+        grid_layout.addLayout(sublayout1, 0, 0, 1, 4)
+        grid_layout.addLayout(sublayout2, 1, 0, 1, 4)
+        grid_layout.addLayout(sublayout3, 2, 0, 1, 4)
+        grid_layout.addWidget(button1, 4, 0, 1, 1)
+        grid_layout.addWidget(button2, 4, 1, 1, 1)
+        grid_layout.addWidget(button3, 4, 2, 1, 1)
+        grid_layout.addWidget(button4, 4, 3, 1, 1)
 
-    @pyqtSlot(QDate)
-    def showDayInfo(self,date):
-        self.selectDay = str(date.toPyDate())
-        print(str(date.toPyDate()))
-        if str(date.toPyDate()).__ne__(self.today):
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setText("Not toDay")
-            msg.exec_()
-        else:
-            dlg = timeSelectDialog()
-            dlg.exec_()
-            db.insertData(self.today, dlg.startWorkTime,dlg.endWorkTime)
+
+    def showDayInfo(self):
+        dlg = timeSelectDialog()
+        dlg.exec_()
+        dlg.close()
+        db.insertData(self.cal.selectDay, dlg.startWorkTime,dlg.endWorkTime)
+
 
     def getWorkTime(self):
-        workTime = db.selectDay(self.selectDay)
+        workTime = db.selectDay(self.cal.selectDay)
         workTime = self.convertTimeFormat(workTime, "%d:%02d:%02d")
         self.workTimeLabel.setText(workTime)
 
@@ -183,14 +191,17 @@ class createMainUi(QWidget):
 
         time = db.calcRemainTime(reformat.toString("yyyy-MM-dd"))
         resultTime = self.convertTimeFormat(remainTime_one_week-time, "%d:%02d:%02d")
-        print(resultTime)
+
 
         self.remainTimeLabel.setText(resultTime)
 
     def convertTimeFormat(self, time, format):
-        m, s = divmod(time, 60)
-        h, m = divmod(m, 60)
-        resultTime = format % (h, m, s)
+        resultTime = "0"
+        if(time != None):
+            m, s = divmod(time, 60)
+            h, m = divmod(m, 60)
+            resultTime = format % (h, m, s)
+        print(resultTime)
         return resultTime
 
 
@@ -203,7 +214,7 @@ class dbUtils():
     def createScheduleTable(self):
         cur = con.cursor()
         cur.execute(
-            "CREATE TABLE IF NOT EXISTS "+scheduletableName+"(Id text PRIMARY KEY, date DATE, start_w TIME NOT NULL, end_w TIME NOT NULL, work_time DOUBLE PRECISION)")
+            "CREATE TABLE IF NOT EXISTS "+scheduletableName+"(date DATE PRIMARY KEY, start_w TIME NOT NULL, end_w TIME NOT NULL, work_time DOUBLE PRECISION)")
         con.commit()
         print("create schedule table")
 
@@ -216,7 +227,7 @@ class dbUtils():
               datetime.datetime.now().strptime(startWorkTime.toString('hh:mm:ss'),'%H:%M:%S')).total_seconds()
         print(todayworktime)
         cur = con.cursor()
-        sql ="INSERT INTO " + scheduletableName + "(id,date,start_w,end_w,work_time) VALUES('henry','"\
+        sql ="INSERT INTO " + scheduletableName + "(date,start_w,end_w,work_time) VALUES('"\
              +today+"','"+startWorkTime.toString('hh:mm:ss')+"', '"\
              +endWorkTime.toString('hh:mm:ss')+"', '"\
              +str(todayworktime)+"')"
@@ -237,7 +248,7 @@ class dbUtils():
 
     def resetByDate(self, day):
         cur = con.cursor()
-        sql = "DELETE FROM " + scheduletableName + " WHERE id = 'henry' AND date = '"+day+"'"
+        sql = "DELETE FROM " + scheduletableName + " WHERE date = '"+day+"'"
         try:
             cur.execute(sql)
         except psycopg2.Error as e:
