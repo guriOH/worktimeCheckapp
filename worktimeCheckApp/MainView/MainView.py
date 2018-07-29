@@ -5,8 +5,11 @@ import psycopg2
 from PyQt5.QtCore import QDate, QEvent, Qt, QTimer, QTime, pyqtSlot
 from PyQt5.QtGui import QIcon, QCursor, QTextCharFormat, QMouseEvent
 from PyQt5.QtWidgets import *
+from worktimeCheckApp.Config.Config import *
 import datetime
 import time
+
+
 
 startWorkTime = None
 remainTime_one_week = 144000.0
@@ -74,8 +77,10 @@ class timeSelectDialog(QDialog):
 class MainView(QMainWindow):
     def __init__(self):
         super().__init__()
-        global db
+        global db, props
+        props = PropertiesReader()
         db = dbUtils()
+
         self.mainUI = createMainUi()
         self.setCentralWidget(self.mainUI)
         self.setWindowTitle("Henry's WorkTime")
@@ -209,8 +214,12 @@ class createMainUi(QWidget):
 class dbUtils():
 
     def __init__(self):
+        self.host = props.read_properties().get('host')
+        self.dbname = props.read_properties().get('dbname')
+        self.user = props.read_properties().get('user')
         self.getConn()
         self.createScheduleTable()
+
 
     def createScheduleTable(self):
         cur = con.cursor()
@@ -221,7 +230,7 @@ class dbUtils():
 
     def getConn(self):
         global con
-        con = psycopg2.connect(host="localhost", dbname="hoon", user="postgres")
+        con = psycopg2.connect(host=self.host, dbname=self.dbname, user=self.user)
 
     def insertData(self, today, startWorkTime, endWorkTime):
         todayworktime = (datetime.datetime.now().strptime(endWorkTime.toString('hh:mm:ss'), '%H:%M:%S')-

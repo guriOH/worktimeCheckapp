@@ -3,8 +3,8 @@ import configparser
 class PropertiesReader(object):
 
     def __init__(self):
-        self.name = "../path.properties"
-        self.main_section = 'PATH'
+        self.name = "../app.properties"
+        self.main_section = 'INFO'
 
         # Add dummy section on top
         self.lines = [ '[%s]\n' % self.main_section ]
@@ -27,11 +27,11 @@ class PropertiesReader(object):
         return details_dict
 
 
-props = PropertiesReader()
-
-dic_props = props.read_properties()
-
-print(dic_props)
-
-print(dic_props.get('ui.spark.savepath'))
-print(dic_props)
+# props = PropertiesReader()
+#
+# dic_props = props.read_properties()
+#
+# print(dic_props)
+#
+# print(dic_props.get('ui.spark.savepath'))
+# print(dic_props)
