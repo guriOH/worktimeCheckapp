@@ -12,6 +12,7 @@ import datetime
 
 
 remainTime_one_week = 144000.0
+lunchTime = 3600.0
 t = ['월', '화', '수', '목', '금', '토', '일']
 
 class MainView(QMainWindow):
@@ -101,7 +102,7 @@ class createMainUi(QWidget):
         dlg = timeSelectDialog()
         dlg.exec_()
         dlg.close()
-        db.insertData(self.cal.selectDay, dlg.startWorkTime,dlg.endWorkTime)
+        db.insertData(self.cal.selectDay, dlg.startWorkTime,dlg.endWorkTime,lunchTime)
 
 
 
@@ -112,10 +113,10 @@ class createMainUi(QWidget):
 
 
     def resultByDate(self):
-        db.resetByDate(self.today)
+        db.resetByDate(self.cal.selectDay)
         global startWorkTime
         startWorkTime = None
-        print("reset Data is date = " + self.today)
+        print("reset Data is date = " + self.cal.selectDay)
 
     def calcremainTime(self):
         print(str(datetime.datetime.now().date()).split('-')[2])

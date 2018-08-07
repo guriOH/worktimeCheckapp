@@ -16,8 +16,8 @@ class PropertiesReader(object):
 
 # props = PropertiesReader()
 #
-# dic_props = props.read_properties('TABLEINFO')
-#
+# dic_props = props.read_properties('DBINFO')
+# #
 # print(dic_props)
 #
 # print(dic_props.get('ui.spark.savepath'))

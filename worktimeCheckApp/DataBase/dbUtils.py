@@ -12,6 +12,7 @@ class dbUtils():
         self.host = dict_db.get('host')
         self.dbname = dict_db.get('dbname')
         self.user = dict_db.get('user')
+        self.port = dict_db.get('port')
         self.tableName = dict_table.get('scheduletablename')
         self.getConn()
         self.createScheduleTable()
@@ -27,17 +28,17 @@ class dbUtils():
 
     def getConn(self):
         global con
-        con = psycopg2.connect(host=self.host, dbname=self.dbname, user=self.user)
+        con = psycopg2.connect(host=self.host, dbname=self.dbname, user=self.user, port = self.port )
 
-    def insertData(self, today, startWorkTime, endWorkTime):
+    def insertData(self, today, startWorkTime, endWorkTime, lunchTime):
         todayworktime = (datetime.datetime.now().strptime(endWorkTime.toString('hh:mm:ss'), '%H:%M:%S')-
               datetime.datetime.now().strptime(startWorkTime.toString('hh:mm:ss'),'%H:%M:%S')).total_seconds()
-        print(todayworktime)
+        print(todayworktime-lunchTime)
         cur = con.cursor()
         sql ="INSERT INTO " + self.tableName + "(date,start_w,end_w,work_time) VALUES('"\
              +today+"','"+startWorkTime.toString('hh:mm:ss')+"', '"\
              +endWorkTime.toString('hh:mm:ss')+"', '"\
-             +str(todayworktime)+"')"
+             +str(todayworktime-lunchTime)+"')"
         try:
             cur.execute(sql)
         except psycopg2.Error as e:
